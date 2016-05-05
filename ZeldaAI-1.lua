@@ -8,7 +8,7 @@
 --1db085 is the person you're talking to, 2 bytes, 7975 is Mido, 7816 is the shop owner, may be possible others 
 --11a605 is the rupee counter, really is 2 bytes, only need this one tho
 --1d8b81 is what is on the A button
---118C18, something to do with links facing direction, 4 bytes as of now, maybe
+--118C18, something to do with links facing direction, 4 bytes as of now, maybe NOT ACTUALLY DIRECTION
 --1DAA54 is the x coordinate, 4 byte float
 --1DAA58 is the y coordinate, 4 byte float
 --1DAA5C is the z coordinate, 4 byte float
@@ -16,9 +16,37 @@
 --101918 is if you're are paused or not, 1 or 0, 0 if not
 --1daa36 is if you're in a text box, 1 or 0, 0 if not
 --11a641 is what shield is equipped, 17 is deku shield
+--1daa98 is something to do with speed, 2 bytes float
  
+--[[
+--Specific Places
+-Exit of Link's House (0,0,-202)
+-Bottom of the Ladder (-29.59, -80,987.9)
+-In front of crawlspace (-784, 120, 1045)
+-In front of sword chest (-231.0055, 178, 2211)
+-Deku shop entrance ( 858 ,0,-427)
+-Deku shop exit (0,0, 213) 
+-Deku tree entrance (4250. -155, -1380)
+
+--Area Values
+-Link's House 52
+-Kokiri Forest 85
+-Mido's House 40
+-Inside the Deku Tree 0 (Kinda messed up but it'll work)
+
+--People Values
+-Mido 7975
+-Shop Owner 7816
+
+--A button Values
+-Enter 2
+-Open 4
+-Decide 6
+-Speak 15
+-Next 16
 
 
+]]--
 --Declarations 	
 
 key={}--Key array, used for button presses
