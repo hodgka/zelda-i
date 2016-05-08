@@ -3,7 +3,7 @@
 --Notes
 --11a638 b button 59 is equipped 
 --11a66d inventory 1 sword 17 sword and shield 
---1d8e45 is what equipment is being shown on the equipment menu, 62 is deku shield, 59  is kokiri sword
+--1d8e45,e3d is what equipment is being shown on the equipment menu, 62 is deku shield, 59  is kokiri sword
 --1c8545 is what room you're in, 45 is kokiri shop
 --1db085 is the person you're talking to, 2 bytes, 7975 is Mido, 7816 is the shop owner, may be possible others 
 --11a605 is the rupee counter, really is 2 bytes, only need this one tho
@@ -31,6 +31,7 @@
 --Area Values
 -Link's House 52
 -Kokiri Forest 85
+-Shop 45
 -Mido's House 40
 -Inside the Deku Tree 0 (Kinda messed up but it'll work)
 
@@ -49,10 +50,15 @@
 ]]--
 --Declarations 	
 
+
 key={}--Key array, used for button presses
 maxfitness=0--Max Fitness Variable
 frames=0 --Total Number of Frames, Emulator runs at ~60fps I think
 state=0 --What state/part of the quest we are on
+prevcount=memory.readbyte(0x11a60) --Number of rupees
+cladder=true--do we need to go down the ladder
+maxfitness=-100
+maxstate=-1
 
 --Test Function 1 Press Start
 function pressStart()
@@ -129,96 +135,137 @@ function checkRupees(value)
 	return false
 end
 
---[[
-function checkState() --Check the state
-	if in_links_room then
+
+function checkState(ladder) --Check the state
+	if memory.readbyte(0x1c8545)==52 then
 		state=0
+		cladder=true
 	end
-	if no_sword then
+	if ladder==true and memory.readfloat(0x1DAA58,true)>=-20 and memory.readbyte(0x1c8545)==85 then
+		cladder=true
 		state=1
+	elseif memory.readbyte(0x1d8b81)==13 then
+		state=1
+		cladder=true
+	elseif memory.readbyte(0x11a66d)==0 and memory.readbyte(0x1c8545)==85 then
+		state=2
 	end
-	if sword and not_sword_onB then
+	if memory.readfloat(0x1DAA58,true)==-80 then
+		cladder=false
+	end
+	if memory.readbyte(0x11a66d)==1 and memory.readbyte(0x11a638)~=59 then
 		state=3
 	end
-	if sword_onB and noShield then
+	if memory.readbyte(0x11a638)==59 and memory.readbyte(0x11a66d)==1 then
 		state=4
 	end
-	if not_shield_equip then
+	if memory.readbyte(0x11a641)~=17 and memory.readbyte(0x11a66d)==17  then
 		state=5
 	end
-	if shield_equip then
+	if memory.readbyte(0x11a641)==17 then
 		state=6
 	end
 	return state
 end
 
-function calculateFitness(state) --Calculate the fitness
+function maxState(state)
+	if state>maxstate then
+		maxstate=state
+		maxfitness=0
+	end
+	return maxstate
+end
+
+function calculateFitness(state,prevcount) --Calculate the fitness
 	fitness=0
 	if state==0 then --Pre Kokiri Forest
-		fitness+=10000-abs(goalx-linkx)
-		fitness+=10000-abs(goaly-linky)
-		fitness+=10000-abs(goalz-linkz)
+		fitness=fitness+10000-math.abs(0-memory.readfloat(0x1DAA54,true))
+		fitness=fitness+10000-math.abs(0-memory.readfloat(0x1DAA58,true))
+		fitness=fitness+10000-math.abs(-202-memory.readfloat(0x1DAA5C,true))
 	end
-	if state==1 then --Getting the Sword
-		fitness+=10000-abs(goalx-linkx)
-		fitness+=10000-abs(goaly-linky)
-		fitness+=10000-abs(goalz-linkz)
-		if sword_inventory
-			fitness+=20000
+	if state==1 then --Ladder
+		fitness=fitness+10000-math.abs(-80-memory.readfloat(0x1DAA58,true))
+		if memory.readbyte(0x1c8545)~=85 then
+			fitness=0
+		end
+	end
+	if state==2 then --Getting the Sword
+		fitness=fitness+10000-math.abs(-784-memory.readfloat(0x1DAA54,true))
+		fitness=fitness+10000-math.abs(120-memory.readfloat(0x1DAA58,true))
+		fitness=fitness+10000-math.abs(1045-memory.readfloat(0x1DAA5C,true))/6
+		if memory.readbyte(0x11a66d)==1 then
+			fitness=fitness+20000
+		end
+		if memory.readbyte(0x1c8545)~=85 then
+			fitness=0
 		end
 	end
 	if state==3 then --Equipping Sword
-		if in_menu==true then
+		if memory.readbyte(0x101918)==1 then
 			fitness=1000
 		end
-		if cursor==sword then
+		if memory.readbyte(0x1d8e3d)==59 then
 			fitness=2000
 		end
-		if b_button==sword then
+		if memory.readbyte(0x11a638)==59 then
 			fitness=3000
 		end
-		if in_menu==false then
+		if  memory.readbyte(0x101918)==0 then
 			fitness=0
 		end
 	end
 	if state==4 then --Rupees Collecting
-		fitness=40000-1000*(current_rupee_count)
-		if prev_rupee_count < current_rupee_count then
-			fitness+=10000
+		fitness=1000*(memory.readbyte(0x11a605))
+		if prevcount < memory.readbyte(0x11a605) then
+			fitness=fitness+10000
+			prevcount=memory.readbyte(0x11a60)
 		end
-		if current_rupee_count==40 then
-			if in_shop then
-				fitness+=10000
+		if memory.readbyte(0x11a605)>=40 then
+			fitness=40000
+			if memory.readbyte(0x1c8545)==45 then
+				fitness=fitness+10000
 			end
-			if talking_to_shopkeep then
-				fitness+=10000
+			if memory.readbyte(0x1db085) ==30 and memory.readbyte(0x1db086)==136 then
+				fitness=fitness+10000
 			end
-			if shield_inventory then
-				fitness+=20000
+			if memory.readbyte(0x11a66d)==17 then
+				fitness=fitness+20000
 			end
 		end
 	end
 	if state==5 then --Equipping Shield
-		if in_menu==true then
+		if memory.readbyte(0x101918)==1 then
 			fitness=1000
 		end
-		if cursor==sword then
-			pressA()
+		if memory.readbyte(0x1d8e45)==62 then
+			--press the A button
 			fitness=2000
 		end
-		if in_menu==false then
+		if memory.readbyte(0x101918)==0 then
 			fitness=0
 		end
 	end
 	if state==6 then --Mido and Getting to the deku tree
-		fitness+=10000-abs(goalx-linkx)
-		fitness+=10000-abs(goaly-linky)
-		fitness+=10000-abs(goalz-linkz)
-		Might be two different maps
+		--Deku tree entrance (4250. -155, -1380)
+		fitness=fitness+10000-math.abs(4250-memory.readfloat(0x1DAA54,true))
+		fitness=fitness+10000-math.abs(-155-memory.readfloat(0x1DAA58,true))
+		fitness=fitness+10000-math.abs(-1380-memory.readfloat(0x1DAA5C,true))
+		if memory.readbyte(0x1c8545)==85 then
+			fitness=fitness+20000
+		end
+		if memory.readbyte(0x1c8545)~=85 then
+			fitness=0
+		end
+	end
+	if maxState(state)~=state then
+		fitness=-1
+	end
+	if fitness>maxfitness then
+		maxfitness=fitness
 	end
 	return fitness
 end
-
+--[[
 function pressACheck() --Press A when specific stuff happens
 	if a_button==open then
 		press the a button
@@ -237,9 +284,13 @@ function pressACheck() --Press A when specific stuff happens
 	end
 end
 ]]--
-
 while true do
    --Statements
-	pressAandRight()
+	if frames%60==0 then
+		console.log(calculateFitness(checkState(cladder),prevcount))
+		console.log(checkState(cladder))
+		console.log(maxstate)
+	end
 	emu.frameadvance()
+	frames=frames+1
 end
