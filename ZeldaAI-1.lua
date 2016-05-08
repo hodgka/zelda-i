@@ -257,6 +257,7 @@ function calculateFitness(state,prevcount) --Calculate the fitness
 			fitness=0
 		end
 	end
+	fitness=fitness+maxstate*100000
 	if maxState(state)~=state then
 		fitness=-1
 	end
