@@ -1,9 +1,10 @@
 --[[
+-ZeldaA/I mutation
 -Inputs are what the neural network sees
 -Outputs are what buttons will be pressed
 ]]--
 function copyGene(gene) --Copy a gene
-	local gene_copy = newGene()
+	local gene_copy = newGene() --Simple copy stuff
 	gene_copy.into = gene.into
 	gene_copy.out = gene.out
 	gene_copy.weight = gene.weight
@@ -68,7 +69,7 @@ function containsLink(geneslist, link)--Check to see if the genes contains a lin
 end
  
 function linkMutate(genome,bias)--Mutate a link
-    local neurona = randomNeuron(genome.genes, false)
+    local neurona = randomNeuron(genome.genes, false)--Pick two random neurons
     local neuronb= randomNeuron(genome.genes, true)     
     local link = newgene()
     if neurona <= Inputs and neuronb <= Inputs then
@@ -130,7 +131,7 @@ end
  
 function mutate(genome) -- Mutate everything
     for mutation,rate in pairs(genome.mutationRates) do
-		if math.random(1,2) == 1 then
+		if math.random(1,2) == 1 then --Change the rates if we need to
             genome.mutationRates[mutation] = 0.95*rate
         else
             genome.mutationRates[mutation] = 1.05263*rate

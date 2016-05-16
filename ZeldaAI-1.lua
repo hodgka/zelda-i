@@ -14,9 +14,11 @@
 --1DAA5C is the z coordinate, 4 byte float
 --1ca112 is how many pick-up-able actors (hearts rupees) are in the current map
 --101918 is if you're are paused or not, 1 or 0, 0 if not
---1daa36 is if you're in a text box, 1 or 0, 0 if not
+--1daa36 is if you're in a player-started text box, 1 or 0, 0 if not
 --11a641 is what shield is equipped, 17 is deku shield
 --1daa98 is something to do with speed, 2 bytes float
+--1daaa4 is some collison check, 128 if collison
+--0x800000 bytes are hard to get through
  
 --[[
 --Specific Places
@@ -57,22 +59,24 @@ frames=0 --Total Number of Frames, Emulator runs at ~60fps I think
 state=0 --What state/part of the quest we are on
 prevcount=memory.readbyte(0x11a60) --Number of rupees
 cladder=true--do we need to go down the ladder
-maxfitness=-100
-maxstate=-1
+maxfitness=-100--Maximum fitness that has been achieved
+maxstate=-1 --Maximum state that has been achieved
+
+--Test Functions
 
 --Test Function 1 Press Start
 function pressStart()
-	if key["Start"]==true then 
+	if key["Start"]==true then --Requires pressing and releasing 
 		key["Start"]=false
 		joypad.set(key,1)
 	else
 		key["Start"]=true
 		joypad.set(key,1)
 	end
-end
+end--Doesn't actually need to release
 
 --Press A
-function pressA()
+function pressA()--Probably can use Test function X-10.23, same results without over calculating fitness
 	if key["A"]==true then
 		key["A"]=false
 		joypad.set(key,1)
@@ -83,14 +87,22 @@ function pressA()
 end
 
 --Test Function X-10.23
-function pressAandRight()
-	if key["A Right"]==true then
-		key["A Right"]=false
-		joypad.set(key,1)
-	else
-		key["A Right"]=true
-		joypad.set(key,1)
-	end
+function pressAandRight() --For textboxes, pressing A and Right handles textboxes, including the shop textboxes
+	key["A Right"]=true	
+	joypad.set(key,1)
+	emu.frameadvance()
+	emu.frameadvance()
+	emu.frameadvance()
+	emu.frameadvance()
+	emu.frameadvance()
+	emu.frameadvance()
+	emu.frameadvance()
+	emu.frameadvance()
+	emu.frameadvance()
+	emu.frameadvance()
+	emu.frameadvance()
+	emu.frameadvance()
+	emu.frameadvance()
 	emu.frameadvance()
 	if key["A"]==true then
 		key["A"]=false
@@ -99,6 +111,7 @@ function pressAandRight()
 		key["A"]=true
 		joypad.set(key,1)
 	end
+	frames=frames+14 --For sufficient buffering
 end
 
 --Test Function 2 Move Up
@@ -107,13 +120,13 @@ function moveUp()
 	joypad.set(key,1)
 end
 
---Read B Button
+--Read B Button, reads what item is on the bButton, Test Function
 function readBButton()
 	bButton=memory.readbyte(0x11a638)
 	return bButton
 end
 
---Test B Button
+--Test B Button, Test function
 function TestBButton(value)
 	if value == 59 then
 		return true
@@ -135,40 +148,41 @@ function checkRupees(value)
 	return false
 end
 
+--Core Fitness Functions
 
 function checkState(ladder) --Check the state
-	if memory.readbyte(0x1c8545)==52 then
+	if memory.readbyte(0x1c8545)==52 then --Intro
 		state=0
 		cladder=true
 	end
-	if ladder==true and memory.readfloat(0x1DAA58,true)>=-20 and memory.readbyte(0x1c8545)==85 then
+	if ladder==true and memory.readfloat(0x1DAA58,true)>=-20 and memory.readbyte(0x1c8545)==85 then--Balcony
 		cladder=true
 		state=1
 	elseif memory.readbyte(0x1d8b81)==13 then
 		state=1
 		cladder=true
-	elseif memory.readbyte(0x11a66d)==0 and memory.readbyte(0x1c8545)==85 then
+	elseif memory.readbyte(0x11a66d)==0 and memory.readbyte(0x1c8545)==85 then--Bottom of ladder
 		state=2
 	end
 	if memory.readfloat(0x1DAA58,true)==-80 then
 		cladder=false
 	end
-	if memory.readbyte(0x11a66d)==1 and memory.readbyte(0x11a638)~=59 then
+	if memory.readbyte(0x11a66d)==1 and memory.readbyte(0x11a638)~=59 then -- Equip Sword
 		state=3
 	end
-	if memory.readbyte(0x11a638)==59 and memory.readbyte(0x11a66d)==1 then
+	if memory.readbyte(0x11a638)==59 and memory.readbyte(0x11a66d)==1 then --Collect Rupees and get shield
 		state=4
 	end
-	if memory.readbyte(0x11a641)~=17 and memory.readbyte(0x11a66d)==17  then
+	if memory.readbyte(0x11a641)~=17 and memory.readbyte(0x11a66d)==17  then--Equip Shield
 		state=5
 	end
-	if memory.readbyte(0x11a641)==17 then
+	if memory.readbyte(0x11a641)==17 then --Enter Deku Tree
 		state=6
 	end
 	return state
 end
 
-function maxState(state)
+function maxState(state)--What's the highest state the AI has achieved
 	if state>maxstate then
 		maxstate=state
 		maxfitness=0
@@ -177,7 +191,7 @@ function maxState(state)
 end
 
 function calculateFitness(state,prevcount) --Calculate the fitness
-	fitness=0
+	fitness=0 --Make sure fitness is zeroed
 	if state==0 then --Pre Kokiri Forest
 		fitness=fitness+10000-math.abs(0-memory.readfloat(0x1DAA54,true))
 		fitness=fitness+10000-math.abs(0-memory.readfloat(0x1DAA58,true))
@@ -257,41 +271,28 @@ function calculateFitness(state,prevcount) --Calculate the fitness
 			fitness=0
 		end
 	end
-	fitness=fitness+maxstate*100000
-	if maxState(state)~=state then
+	fitness=fitness+maxstate*100000 --Reward being at a higher state
+	if maxState(state)~=state then --Punish for being at a lower state
 		fitness=-1
 	end
-	if fitness>maxfitness then
+	if fitness>maxfitness then --Set max fitness
 		maxfitness=fitness
 	end
 	return fitness
 end
---[[
-function pressACheck() --Press A when specific stuff happens
-	if a_button==open then
-		press the a button
-	end 
-	if a_button==speak then
-		press the a button
-		check for person importance
-	end
-	if deciding then
-		move right
-		press a_button
-	end
-	if speaking then
-		press the A button
-		press right --For the shop
-	end
-end
-]]--
+
+--Main Loop
+
 while true do
    --Statements
-	if frames%60==0 then
+	if frames%60==0 then --Used for testing/seeing fitness values
 		console.log(calculateFitness(checkState(cladder),prevcount))
 		console.log(checkState(cladder))
 		console.log(maxstate)
 	end
-	emu.frameadvance()
+	if memory.readbyte(0x1daa36)==1 then--Textboxes
+		pressAandRight()
+	end
+	emu.frameadvance() --Advance the emulator one frame
 	frames=frames+1
 end
